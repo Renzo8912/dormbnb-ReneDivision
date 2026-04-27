@@ -165,10 +165,7 @@ class SignInScreen extends StatelessWidget {
 
                                   // If it doesn't crash, it was successful! Go to Home.
                                   if (context.mounted) {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const MainNavigator()),
-                                    );
+                                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RoleSelectionScreen(isSignUpFlow: false)));
                                   }
                                 } catch (e) {
                                   // The dev guide says to check the debug console for errors!
@@ -218,7 +215,7 @@ class SignInScreen extends StatelessWidget {
                           onTap: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+                              MaterialPageRoute(builder: (context) => const RoleSelectionScreen(isSignUpFlow: true)), // <-- The correct portal!
                             );
                           },
                           child: const Text(

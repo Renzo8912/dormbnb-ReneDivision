@@ -33,6 +33,7 @@ class UserController {
     required String firstName,
     required String lastName,
     required String number,
+    required String role,
   }) async {
     try {
       UserCredential credential = await _authService.createAccount(
@@ -47,6 +48,7 @@ class UserController {
           lastName: lastName,
           email: email,
           number: number,
+          roles: [role],
         );
 
         await _db.collection(_dormersCollection).doc(newUser.id).set(newUser.toMap());

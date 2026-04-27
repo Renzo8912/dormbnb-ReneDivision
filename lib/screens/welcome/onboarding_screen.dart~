@@ -41,12 +41,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // Temporary placeholder for final action as requested for future data hookups
   Future<void> _completeOnboarding() async {
     // TODO: Colleague can add SharedPreferences here to mark onboarding as seen
-    debugPrint("Onboarding Complete. Navigating to Landing Screen...");
+    debugPrint("Onboarding Complete. Navigating to Role Selection...");
 
-    // Send them to authenticate first!
+    // This pushes the new screen and removes the onboarding from the backstack
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const LandingScreen()),
+      MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
     );
   }
 

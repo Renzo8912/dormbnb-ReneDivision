@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import '../welcome/role_selection_screen.dart';
 import 'signin.dart';
 import 'signup.dart';
 
 class LandingScreen extends StatelessWidget {
-  final String selectedRole; // We pass the role here so the app remembers it
-
-  const LandingScreen({super.key, required this.selectedRole});
+  const LandingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -99,10 +98,7 @@ class LandingScreen extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => SignUpScreen()) // <-- Removed 'const' here
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const RoleSelectionScreen(isSignUpFlow: true)));
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF4A8BFE), // Blue
@@ -146,10 +142,9 @@ class LandingScreen extends StatelessWidget {
                       width: double.infinity,
                       child: OutlinedButton(
                         onPressed: () {
-                          debugPrint("Navigating to Sign In as $selectedRole");
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => SignInScreen()),
+                            MaterialPageRoute(builder: (context) => const SignInScreen()),
                           );
                         },
                         style: OutlinedButton.styleFrom(

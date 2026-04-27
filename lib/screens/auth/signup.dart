@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'signin.dart';
 import '../main_navigator.dart';
 import '../../controller/user_controller.dart';
+import '../welcome/role_selection_screen.dart';
 
 final TextEditingController fullNameController = TextEditingController();
 final TextEditingController emailController = TextEditingController();
@@ -9,7 +10,8 @@ final TextEditingController passwordController = TextEditingController();
 final TextEditingController confirmPasswordController = TextEditingController();
 
 class SignUpScreen extends StatelessWidget {
-  const SignUpScreen({super.key});
+  final String role;
+  const SignUpScreen({super.key, required this.role});
 
   @override
   Widget build(BuildContext context) {
@@ -225,15 +227,13 @@ class SignUpScreen extends StatelessWidget {
                                     password: passwordController.text.trim(),
                                     firstName: firstName,
                                     lastName: lastName,
-                                    number: "0000000000", // Dummy number until UI is updated
+                                    number: "0000000000",
+                                    role: role,
                                   );
 
-                                  // 4. Success! Navigate to Home
+                                  // Success! Go to Role Selection
                                   if (context.mounted) {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const MainNavigator()),
-                                    );
+                                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const SignInScreen()));
                                   }
                                 } catch (e) {
                                   debugPrint("Error in Sign Up: $e");

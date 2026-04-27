@@ -1,55 +1,39 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'widgets/dorm_card.dart'; // Import the reusable card
+import '../../controller/dorm_controller.dart';
+import '../../models/dorm_model.dart';
+import 'widgets/dorm_card.dart';
+import 'browse_tab.dart';
+import 'notification_screen.dart';
+import '../../../models/dorm_model.dart';
 
-class HomeTab extends StatelessWidget {
+class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
   @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  // This variable holds the database request
+  late Future<List<DormModel>> _dormsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fire the database request as soon as the screen loads
+    _dormsFuture = DormController().getAllDorms();
+  }
+
+  // Pull-to-refresh functionality just in case!
+  Future<void> _refreshDorms() async {
+    setState(() {
+      _dormsFuture = DormController().getAllDorms();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // MOCK DATA FOR DEMO - TODO: Replace with real API data
-    final featuredDorms = [
-      DormModel(
-        imageUrl: 'lib/assets/images/DormAlpha.png',
-        name: 'Marigold Blue Dormitory',
-        location: 'Sitio Lorenzo, Brgy Ibabang Dupay, Lucena City',
-        pricePerMonth: 3500,
-        rating: 4.8,
-        reviewCount: 42,
-        amenities: ['Wifi', 'Female', 'AC'],
-      ),
-      DormModel(
-        imageUrl: 'lib/assets/images/DormBeta.png',
-        name: 'Azure Heights',
-        location: 'Sitio Little Bagu...',
-        pricePerMonth: 2800,
-        rating: 4.5, // Mock rating
-        reviewCount: 20, // Mock reviews
-        amenities: ['Wifi', 'Male'],
-      ),
-    ];
-
-    final budgetFriendlyDorms = [
-      DormModel(
-        imageUrl: 'lib/assets/images/DormCharlie.png',
-        name: 'Modern Arch Dormitory',
-        location: 'Sitio Lorenzo, Brgy Ibabang Dupay, Lucena City',
-        pricePerMonth: 3500,
-        rating: 4.7, // Mock rating
-        reviewCount: 30, // Mock reviews
-        amenities: ['Wifi', 'Female', 'AC'],
-      ),
-      DormModel(
-        imageUrl: 'lib/assets/images/DormDelta.png',
-        name: 'Serene Stay',
-        location: 'Sitio Rainbow, B...',
-        pricePerMonth: 2800,
-        rating: 4.6, // Mock rating
-        reviewCount: 25, // Mock reviews
-        amenities: ['Wifi', 'Male'],
-      ),
-    ];
-
     return Stack(
       children: [
         // 1. TOP BLURRY BACKGROUND STACK
@@ -67,98 +51,171 @@ class HomeTab extends StatelessWidget {
         BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withValues(alpha: 0.5),
             height: 150,
           ),
         ),
 
         // 3. SAFE CONTENT COLUMN
         SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // HEADER SECTION
-                Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
+          child: RefreshIndicator(
+            onRefresh: _refreshDorms,
+            color: const Color(0xFF4A8BFE),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(), // Allows pull-to-refresh even if list is short
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // HEADER SECTION
+                  Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RichText(
+                              text: const TextSpan(
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Nunito',
+                                ),
+                                children: [
+                                  TextSpan(text: 'Dorm', style: TextStyle(color: Color(0xFF1A1A1A))),
+                                  TextSpan(text: 'BNB', style: TextStyle(color: Color(0xFF4A8BFE))),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Good morning!', // Generic greeting for now
+                              style: TextStyle(fontSize: 13, color: Color(0xFF1A1A1A)),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.search, size: 24, color: Color(0xFF1A1A1A)),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const BrowseScreen()),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.notifications_none, size: 24, color: Color(0xFF1A1A1A)),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const NotificationScreen()),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // THE DATABASE CONNECTION
+                  FutureBuilder<List<DormModel>>(
+                    future: _dormsFuture,
+                    builder: (context, snapshot) {
+                      // STATE 1: Still loading from Firebase
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const SizedBox(
+                          height: 300,
+                          child: Center(child: CircularProgressIndicator(color: Color(0xFF4A8BFE))),
+                        );
+                      }
+
+                      // STATE 2: Firebase threw an error
+                      if (snapshot.hasError) {
+                        return SizedBox(
+                          height: 300,
+                          child: Center(child: Text("Error loading dorms: ${snapshot.error}")),
+                        );
+                      }
+
+                      // STATE 3: Success! No dorms in database yet
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const SizedBox(
+                          height: 300,
+                          child: Center(child: Text("No dorms available yet. Be the first to list one!")),
+                        );
+                      }
+
+                      // STATE 4: Success with data! Let's filter them.
+                      List<DormModel> allDorms = snapshot.data!;
+
+                      // Featured Dorms (Just taking the first half of the DB for now)
+                      List<DormModel> featuredDorms = allDorms.take(5).toList();
+
+                      // Budget Friendly (Sorting by the lowest price)
+                      List<DormModel> budgetFriendlyDorms = List<DormModel>.from(allDorms)..sort((a, b) {
+                        // The '?' protects the receiver from crashing if a dorm object is missing data
+                        double aBed = a?.bedSpacePrice ?? 0.0;
+                        double aSingle = a?.singleRoomPrice ?? 0.0;
+
+                        double bBed = b?.bedSpacePrice ?? 0.0;
+                        double bSingle = b?.singleRoomPrice ?? 0.0;
+
+                        // Find the valid price for A
+                        double priceA = aBed > 0 ? aBed : aSingle;
+                        // Find the valid price for B
+                        double priceB = bBed > 0 ? bBed : bSingle;
+
+                        return priceA.compareTo(priceB);
+                      });
+
+                      return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          RichText(
-                            text: const TextSpan(
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                fontFamily: 'Nunito',
-                              ),
-                              children: [
-                                TextSpan(text: 'Dorm', style: TextStyle(color: Color(0xFF1A1A1A))),
-                                TextSpan(text: 'BNB', style: TextStyle(color: Color(0xFF4A8BFE))),
-                              ],
+                          // FEATURED DORMS SECTION
+                          const SectionHeader(title: 'Featured Dorms'),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 310,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                              itemCount: featuredDorms.length,
+                              itemBuilder: (context, index) {
+                                return DormCard(dorm: featuredDorms[index]);
+                              },
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Goodmorning, Juan!', // Mock name - TODO: replace with real user name
-                            style: TextStyle(fontSize: 13, color: Color(0xFF1A1A1A)),
+
+                          const SizedBox(height: 24),
+
+                          // BUDGET FRIENDLY SECTION
+                          const SectionHeader(title: 'Budget Friendly'),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 310,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                              itemCount: budgetFriendlyDorms.length,
+                              itemBuilder: (context, index) {
+                                return DormCard(dorm: budgetFriendlyDorms[index]);
+                              },
+                            ),
                           ),
                         ],
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.search, size: 24, color: Color(0xFF1A1A1A)),
-                            onPressed: () {}, // TODO: Implement search functionality
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.notifications_none, size: 24, color: Color(0xFF1A1A1A)),
-                            onPressed: () {}, // TODO: Implement notifications functionality
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // FEATURED DORMS SECTION
-                const SectionHeader(title: 'Featured Dorms'),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 310, // Height to fit card content
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    itemCount: featuredDorms.length,
-                    itemBuilder: (context, index) {
-                      return DormCard(dorm: featuredDorms[index]);
+                      );
                     },
                   ),
-                ),
 
-                const SizedBox(height: 24),
-
-                // BUDGET FRIENDLY SECTION
-                const SectionHeader(title: 'Budget Friendly'),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 310,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    itemCount: budgetFriendlyDorms.length,
-                    itemBuilder: (context, index) {
-                      return DormCard(dorm: budgetFriendlyDorms[index]);
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 24), // Bottom padding
-              ],
+                  const SizedBox(height: 40), // Bottom padding
+                ],
+              ),
             ),
           ),
         ),
@@ -167,6 +224,7 @@ class HomeTab extends StatelessWidget {
   }
 }
 
+// Keep your SectionHeader exactly the same
 class SectionHeader extends StatelessWidget {
   final String title;
 
@@ -189,7 +247,7 @@ class SectionHeader extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () {}, // TODO: Implement 'See All' functionality
+            onPressed: () {},
             child: const Text(
               'See all →',
               style: TextStyle(fontSize: 12, color: Color(0xFF4A8BFE)),

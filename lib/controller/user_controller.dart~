@@ -13,6 +13,8 @@ import 'package:dormbnb/models/booking_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/payment_record_model.dart';
+
 class UserController {
   static final UserController instance = UserController._internal();
   UserController._internal();
@@ -20,6 +22,10 @@ class UserController {
 
   final AuthService _authService = AuthService();
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  final String _dormersCollection = 'dormer';
+  final String _bookingsCollection = 'bookings';
+  final String _dormsCollections = 'dorms';
 
   Future<void> signUp({
     required String email,
@@ -42,10 +48,9 @@ class UserController {
           lastName: lastName,
           email: email,
           number: number,
-          roles: [role],
         );
 
-        await _db.collection('users').doc(newUser.id).set(newUser.toMap());
+        await _db.collection(_dormersCollection).doc(newUser.id).set(newUser.toMap());
       }
     } catch (e) {
       debugPrint("Error in signUp: $e");
@@ -65,7 +70,7 @@ class UserController {
     String? uid = _authService.currentUser?.uid;
     if (uid == null) return null;
 
-    DocumentSnapshot doc = await _db.collection('users').doc(uid).get();
+    DocumentSnapshot doc = await _db.collection(_dormersCollection).doc(uid).get();
     if (doc.exists) {
       return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
     }
@@ -80,7 +85,7 @@ class UserController {
         throw Exception("User must be logged in to update phone number.");
       }
 
-      await _db.collection('users').doc(uid).update({'number': newNumber});
+      await _db.collection(_dormersCollection).doc(uid).update({'number': newNumber});
     } catch (e) {
       debugPrint("Error updating phone number: $e");
       rethrow;
@@ -95,7 +100,7 @@ class UserController {
         throw Exception("User must be logged in to add booking");
       }
 
-      await _db.collection('users').doc(uid).update({
+      await _db.collection(_dormersCollection).doc(uid).update({
         'bookings': FieldValue.arrayUnion([bookingId])
       });
     } catch (e) {
@@ -106,6 +111,7 @@ class UserController {
 
   Future<void> createBooking({
     required DormModel dorm,
+    required double selectedPrice,
     required DateTime moveInDate,
     required String status,
   }) async {
@@ -115,7 +121,7 @@ class UserController {
 
       WriteBatch batch = _db.batch();
 
-      DocumentReference bookingRef = _db.collection('bookings').doc();
+      DocumentReference bookingRef = _db.collection(_bookingsCollection).doc();
       String reference = "REF-${DateTime.now().millisecondsSinceEpoch}";
 
 
@@ -124,7 +130,7 @@ class UserController {
         userId: uid,
         dormId: dorm.id,
         status: status,
-        rent: dorm.rate.toDouble(),
+        rent: selectedPrice,
         moveInDate: moveInDate,
         nextDueDate: moveInDate.add(const Duration(days: 30)),
         ref: reference,
@@ -136,7 +142,7 @@ class UserController {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      DocumentReference userRef = _db.collection('users').doc(uid);
+      DocumentReference userRef = _db.collection(_dormersCollection).doc(uid);
       batch.update(userRef, {
         'bookings': FieldValue.arrayUnion([bookingRef.id])
       });
@@ -157,7 +163,7 @@ class UserController {
         throw Exception("User must be logged in to remove a booking.");
       }
 
-      await _db.collection('users').doc(uid).update({
+      await _db.collection(_dormersCollection).doc(uid).update({
         'bookings': FieldValue.arrayRemove([bookingId])
       });
     } catch (e) {
@@ -172,7 +178,7 @@ class UserController {
       if (uid == null) return [];
 
       QuerySnapshot snapshot = await _db
-          .collection('bookings')
+          .collection(_bookingsCollection)
           .where('userId', isEqualTo: uid)
           .get();
 
@@ -187,7 +193,7 @@ class UserController {
 
   Future<void> cancelBooking(String bookingId) async {
     try {
-      await _db.collection('bookings').doc(bookingId).update({
+      await _db.collection(_bookingsCollection).doc(bookingId).update({
         'status': BookingModel.cancelled
       });
 
@@ -195,6 +201,64 @@ class UserController {
     } catch (e) {
       debugPrint("Error canceling booking: $e");
       rethrow;
+    }
+  }
+
+  Future<void> confirmPayment(PaymentRecord record) async {
+    try {
+      String? uid = _authService.currentUser?.uid;
+      if (uid == null) throw Exception("Unauthorized");
+
+      DocumentReference userRef = _db.collection(_dormersCollection).doc(uid);
+
+      // 1. Create the new "Received" version of the record
+      PaymentRecord receivedRecord = PaymentRecord(
+        userName: record.userName,
+        dormId: record.dormId,
+        roomType: record.roomType,
+        amount: record.amount,
+        date: DateTime.now(), // Current payment date
+        status: PaymentRecord.received,
+      );
+
+      WriteBatch batch = _db.batch();
+
+      // 2. Remove from pending list (must match exactly)
+      batch.update(userRef, {
+        'pendingOrOverdue': FieldValue.arrayRemove([record.toMap()])
+      });
+
+      // 3. Add to received list
+      batch.update(userRef, {
+        'paymentsReceived': FieldValue.arrayUnion([receivedRecord.toMap()])
+      });
+
+      await batch.commit();
+    } catch (e) {
+      debugPrint("Error confirming payment: $e");
+      rethrow;
+    }
+  }
+
+  Future<List<DormModel>> fetchAllDormsByDormOwner(List<String> dormsOwnedIds) async {
+    try {
+      if (dormsOwnedIds.isEmpty) return [];
+
+      List<DormModel> ownedDorms = [];
+
+      QuerySnapshot snapshot = await _db
+          .collection(_dormsCollections)
+          .where(FieldPath.documentId, whereIn: dormsOwnedIds)
+          .get();
+
+      ownedDorms = snapshot.docs.map((doc) {
+        return DormModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+
+      return ownedDorms;
+    } catch (e) {
+      debugPrint("Error fetching owned dorms: $e");
+      return [];
     }
   }
 }
