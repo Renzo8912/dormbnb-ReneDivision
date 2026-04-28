@@ -4,11 +4,28 @@ import '../main_navigator.dart';
 import '../../controller/user_controller.dart';
 import '../welcome/role_selection_screen.dart';
 
-final TextEditingController emailController = TextEditingController();
-final TextEditingController passwordController = TextEditingController();
-
-class SignInScreen extends StatelessWidget {
+class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
+
+  @override
+  State<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  // 1. Controllers moved INSIDE so they clear automatically when leaving the screen!
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  // 2. State variable for the eye icon
+  bool _isPasswordVisible = false;
+
+  @override
+  void dispose() {
+    // Clean up controllers when screen is closed to free up memory
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +55,6 @@ class SignInScreen extends StatelessWidget {
                 colors: [
                   Colors.white,
                   Colors.white,
-                  // FIX 2: Updated deprecated withOpacity
                   Colors.white.withValues(alpha: 0.85),
                   Colors.white.withValues(alpha: 0.0),
                 ],
@@ -107,7 +123,7 @@ class SignInScreen extends StatelessWidget {
 
                           // EMAIL FIELD
                           TextField(
-                            controller: emailController, // FIX 3: Attached the controller so it saves text
+                            controller: emailController,
                             decoration: InputDecoration(
                               hintText: 'Email',
                               hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
@@ -129,13 +145,24 @@ class SignInScreen extends StatelessWidget {
 
                           // PASSWORD FIELD
                           TextField(
-                            controller: passwordController, // FIX 3: Attached the controller
-                            obscureText: true,
+                            controller: passwordController,
+                            obscureText: !_isPasswordVisible, // 3. Toggles based on the boolean!
                             decoration: InputDecoration(
                               hintText: 'Password',
                               hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
                               prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFAAAAAA)),
-                              suffixIcon: const Icon(Icons.visibility_off_outlined, color: Color(0xFFAAAAAA)),
+                              // 4. Interactive Eye Icon
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                  color: const Color(0xFFAAAAAA),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isPasswordVisible = !_isPasswordVisible; // Flips the switch!
+                                  });
+                                },
+                              ),
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -157,21 +184,16 @@ class SignInScreen extends StatelessWidget {
                             child: ElevatedButton(
                               onPressed: () async {
                                 try {
-                                  // Call the backend controller from the dev guide
                                   await UserController().signIn(
                                     emailController.text.trim(),
                                     passwordController.text.trim(),
                                   );
 
-                                  // If it doesn't crash, it was successful! Go to Home.
                                   if (context.mounted) {
                                     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RoleSelectionScreen(isSignUpFlow: false)));
                                   }
                                 } catch (e) {
-                                  // The dev guide says to check the debug console for errors!
                                   debugPrint("Error in Sign In: $e");
-
-                                  // Optional: Show a little pop-up to the user
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text('Sign in failed: $e')),
@@ -203,7 +225,7 @@ class SignInScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
-                    // SIGN UP TEXT (Navigates to SignUpScreen)
+                    // SIGN UP TEXT
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -215,7 +237,7 @@ class SignInScreen extends StatelessWidget {
                           onTap: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => const RoleSelectionScreen(isSignUpFlow: true)), // <-- The correct portal!
+                              MaterialPageRoute(builder: (context) => const RoleSelectionScreen(isSignUpFlow: true)),
                             );
                           },
                           child: const Text(

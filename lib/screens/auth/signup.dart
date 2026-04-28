@@ -4,14 +4,33 @@ import '../main_navigator.dart';
 import '../../controller/user_controller.dart';
 import '../welcome/role_selection_screen.dart';
 
-final TextEditingController fullNameController = TextEditingController();
-final TextEditingController emailController = TextEditingController();
-final TextEditingController passwordController = TextEditingController();
-final TextEditingController confirmPasswordController = TextEditingController();
-
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
   final String role;
   const SignUpScreen({super.key, required this.role});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  // 1. Controllers moved INSIDE State
+  final TextEditingController fullNameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
+
+  // 2. Separate visibility toggles for each password field
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+
+  @override
+  void dispose() {
+    fullNameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +60,6 @@ class SignUpScreen extends StatelessWidget {
                 colors: [
                   Colors.white,
                   Colors.white,
-                  // Updated deprecated withOpacity
                   Colors.white.withValues(alpha: 0.85),
                   Colors.white.withValues(alpha: 0.0),
                 ],
@@ -110,7 +128,7 @@ class SignUpScreen extends StatelessWidget {
 
                           // FULL NAME FIELD
                           TextField(
-                            controller: fullNameController, // Attached controller
+                            controller: fullNameController,
                             decoration: InputDecoration(
                               hintText: 'Full Name',
                               hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
@@ -132,7 +150,7 @@ class SignUpScreen extends StatelessWidget {
 
                           // EMAIL FIELD
                           TextField(
-                            controller: emailController, // Attached controller
+                            controller: emailController,
                             decoration: InputDecoration(
                               hintText: 'Email',
                               hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
@@ -154,13 +172,24 @@ class SignUpScreen extends StatelessWidget {
 
                           // PASSWORD FIELD
                           TextField(
-                            controller: passwordController, // Attached controller
-                            obscureText: true,
+                            controller: passwordController,
+                            obscureText: !_isPasswordVisible,
                             decoration: InputDecoration(
                               hintText: 'Password',
                               hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
                               prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFAAAAAA)),
-                              suffixIcon: const Icon(Icons.visibility_off_outlined, color: Color(0xFFAAAAAA)),
+                              // Eye Toggle 1
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                  color: const Color(0xFFAAAAAA),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isPasswordVisible = !_isPasswordVisible;
+                                  });
+                                },
+                              ),
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -178,13 +207,24 @@ class SignUpScreen extends StatelessWidget {
 
                           // CONFIRM PASSWORD FIELD
                           TextField(
-                            controller: confirmPasswordController, // Attached controller
-                            obscureText: true,
+                            controller: confirmPasswordController,
+                            obscureText: !_isConfirmPasswordVisible,
                             decoration: InputDecoration(
                               hintText: 'Confirm Password',
                               hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
                               prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFAAAAAA)),
-                              suffixIcon: const Icon(Icons.visibility_off_outlined, color: Color(0xFFAAAAAA)),
+                              // Eye Toggle 2
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _isConfirmPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                  color: const Color(0xFFAAAAAA),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                                  });
+                                },
+                              ),
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -205,33 +245,30 @@ class SignUpScreen extends StatelessWidget {
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: () async {
-                                // 1. Check if passwords match
                                 if (passwordController.text != confirmPasswordController.text) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('Passwords do not match!')),
                                     );
                                   }
-                                  return; // Stop the function here
+                                  return;
                                 }
 
                                 try {
-                                  // 2. Split the full name into First and Last
                                   List<String> nameParts = fullNameController.text.trim().split(' ');
                                   String firstName = nameParts.isNotEmpty ? nameParts.first : '';
                                   String lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
-                                  // 3. Send data to your colleague's controller
+                                  // Access the 'role' variable properly inside a StatefulWidget using widget.role!
                                   await UserController().signUp(
                                     email: emailController.text.trim(),
                                     password: passwordController.text.trim(),
                                     firstName: firstName,
                                     lastName: lastName,
                                     number: "0000000000",
-                                    role: role,
+                                    role: widget.role,
                                   );
 
-                                  // Success! Go to Role Selection
                                   if (context.mounted) {
                                     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const SignInScreen()));
                                   }
@@ -303,7 +340,6 @@ class SignUpScreen extends StatelessWidget {
             ),
           ),
 
-          // BACK BUTTON (Top Left)
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
